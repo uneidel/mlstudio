@@ -1,0 +1,32 @@
+library(tm)
+# Map 1-based optional input ports to variables
+hamspam <- maml.mapInputPort(1) # class: data.frame
+
+calculate.IDF <- function(input.voc, minDF, maxDF)
+{  
+  #check input parameters 
+  if(!is.data.frame(input.voc)){
+    stop("calculate.IDF error: input.voc must be a data frame")  
+  }
+  if(nrow(input.voc) ==0){
+    stop("calculate.IDF error: input.voc can not be empty")  
+  }
+  total.docs <- input.voc[1,"total.docs"] 
+  
+  input.voc <- subset( input.voc, select = -c(total.docs) )
+  terms <- names(input.voc) 
+  dfs <- as.matrix(input.voc [1,])
+  kept_ids <- which(dfs >= minDF & dfs <= maxDF)
+  kept_dfs <- dfs[kept_ids] 
+
+  idfs <- log(total.docs/kept_dfs)
+  
+  output.voc <- data.frame(word=terms[kept_ids], df=kept_dfs, idf=idfs)
+  
+  return(output.voc)
+}
+
+
+hamspam <- calculate.IDF(hamspam, 1, 100);
+# assign to output for further Processing
+maml.mapOutputPort("hamspam");

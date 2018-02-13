@@ -1,0 +1,32 @@
+library(tm)
+# Map 1-based optional input ports to variables
+hamspam <- maml.mapInputPort(1) # class: data.frame
+
+CreateVocabulary <- function(inputdataframe,minWordLength,maxWordLength,minDF,maxDF)
+{
+  #expecting text_column named to be text
+  corpus <- Corpus(VectorSource(inputdataframe$text))
+  DTM <- DocumentTermMatrix(corpus, control=list(dictionary=NULL, 
+                                                 weighting= weightBin, 
+                                                 bounds = list(global=c(minDF, maxDF)), 
+                                                 wordLengths=c(minWordLength,maxWordLength)))
+  
+  terms  <- Terms(DTM) # just the terms
+  df <-  tm_term_score(DTM, terms, FUN = slam::col_sums) # terms and there occurence
+  idf <- log(nDocs(DTM)/df) # prcessing the inverse document Frequency - this means max occurency Term is 0 and all others are a 0. value
+  #Creating output
+  outputdataframe <- data.frame(row.names = c("df", "idf"))
+  outputdataframe <- rbind(outputdataframe, df)
+  outputdataframe <- rbind(outputdataframe, idf)
+  names(outputdataframe) <- terms
+  outputdataframe <- cbind(data.frame(total.docs=length(inputdataframe$text)), outputdataframe)
+  return (outputdataframe); # matrix with vocabulary, DF foreach, IDF foreach 
+  
+}
+
+
+
+hamspam.voc <- CreateVocabulary(hamspam, 3, 12, 1, 100);
+
+# assign to output for further Processing
+maml.mapOutputPort("hamspam.voc");

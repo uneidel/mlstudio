@@ -1,0 +1,60 @@
+# Map 1-based optional input ports to variables
+dataset1 <- maml.mapInputPort(1) # class: data.frame
+dataset2 <- maml.mapInputPort(2) # class: data.frame
+
+calculate.TFIDF <- function(text.column, input.voc, minWordLen, maxWordLen)
+{
+ 
+  input.dictionary <- as.vector(input.voc$word)
+  
+  theCorpus <- Corpus(VectorSource(text.column))
+  DTM <- DocumentTermMatrix(theCorpus, 
+                            control = list(dictionary = NULL,
+                                           weighting = weightTf,                                                 
+                                           WordLengths = c(minWordLen, maxWordLen)))  
+  
+  current.dictionary  <- Terms(DTM)
+  common.dictionary <- intersect(input.dictionary, current.dictionary)
+  DTM <- DTM[, common.dictionary]
+  
+  #nDocs(DTM)   
+  #nTerms(DTM)
+  #convert/coarse DTM into data frame
+  document.term.matrix <- data.frame(doc.id = DTM$i, term.id = DTM$j, 
+                                     word = common.dictionary[DTM$j], tf = DTM$v)
+  
+  extra.dictionary <- setdiff(input.dictionary, current.dictionary)
+  
+  output <- merge(x =  document.term.matrix, y = input.voc, by = "word")
+  output <- output[sort.int(output$doc.id, index.return = TRUE)$ix, ]
+  output <- cbind(output, tf.idf =output$tf * output$idf)
+  row.names(output) <- NULL
+  
+  #replace TF with TF-IDF  
+  DTM$v <- output$tf.idf  
+  
+  #convert "sparse" DocumentTermMatrix into "dense" Matrix
+  denseMatrix <- as.matrix(DTM)
+  
+  zeroMatrix <- matrix(data =  rep(0,nrow(DTM)*length(extra.dictionary)), 
+                       nrow = nrow(DTM), 
+                       ncol = length(extra.dictionary), byrow = FALSE,
+                       dimnames = list(Docs(DTM),
+                                       extra.dictionary))
+  
+  denseMatrix <- cbind(denseMatrix, zeroMatrix)
+  #re-order the columns in the matrix
+  denseMatrix <- subset(denseMatrix, ,input.dictionary)
+  
+  #convert Matrix into data frame (dataset)
+  df <- as.data.frame(denseMatrix)    
+  
+  return(df)
+}
+
+text_column = dataset2[[2]]
+label_column = dataset2[[1]]
+outputset <- calculate.TFIDF(text_column, dataset1, 3, 12)
+outputset <- cbind(label_column, outputset)
+# Select data.frame to be sent to the output Dataset port
+maml.mapOutputPort("outputset");

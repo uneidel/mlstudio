@@ -1,0 +1,33 @@
+library(tm)
+# Map 1-based optional input ports to variables
+hamspam <- maml.mapInputPort(1) # class: data.frame
+
+preprocess.PrepareData <- function(inputdataframe)
+{
+  print("Entering Preparing")
+  #expecting text_column named to be text
+  corpus <- Corpus(VectorSource(inputdataframe$Text))
+  # lower all
+  corpus <- tm_map(corpus, content_transformer(tolower))
+  # apply stemming 
+  # corpus <-tm_map(corpus, stemDocument,  lazy=TRUE) #Lazy mappings are mappings which are delayed until the content is accessed. It is useful for large corpora if only few documents will be accessed. In such a case it avoids the computationally expensive application of the mapping to all elements in the corpus.
+  # does not work properly  kindly -> kindli and so on.
+  # remove punctuation 
+  corpus <- tm_map(corpus,removePunctuation, lazy=TRUE) 
+  # remove white spaces 
+
+  corpus <- tm_map(corpus,stripWhitespace, lazy=TRUE) 
+  # remove numbers 
+  corpus <- tm_map(corpus, removeNumbers)
+  # remove stop words 
+  corpus <-  tm_map(corpus,removeWords,stopwords("en"), lazy=TRUE) # de etc.
+  odataframe <-data.frame(text=unlist(sapply(corpus, `[`, "content")), stringsAsFactors=F)
+  inputdataframe$text<-iconv(odataframe$text, to="utf-8") #  MAML only support UTF8
+  
+  return (inputdataframe);
+}
+
+
+hamspam <- preprocess.PrepareData(hamspam)
+# assign to output for further Processing
+maml.mapOutputPort("hamspam");
